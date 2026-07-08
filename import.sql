@@ -1,0 +1,12 @@
+TRUNCATE TABLE host_detail;
+TRUNCATE TABLE mod_detail;
+TRUNCATE TABLE disk_tsar;
+TRUNCATE TABLE pref_tsar;
+LOAD DATA INFILE '/var/lib/mysql-files/host_detail.dat' INTO TABLE host_detail FIELDS TERMINATED BY '\t' IGNORE 1 LINES;
+LOAD DATA INFILE '/var/lib/mysql-files/mod_detail.dat' INTO TABLE mod_detail (mod_name, type, description, unit, tag) FIELDS TERMINATED BY '\t' IGNORE 1 LINES;
+LOAD DATA INFILE '/var/lib/mysql-files/disk_tsar.dat' INTO TABLE disk_tsar (ts, hostid, type, mod_name, value, tag) FIELDS TERMINATED BY '\t' IGNORE 1 LINES;
+LOAD DATA INFILE '/var/lib/mysql-files/pref_tsar.dat' INTO TABLE pref_tsar (ts, hostid, type, mod_name, value, tag) FIELDS TERMINATED BY '\t' IGNORE 1 LINES;
+SELECT CONCAT('host_detail: ', COUNT(*), ' rows') FROM host_detail;
+SELECT CONCAT('mod_detail: ', COUNT(*), ' rows') FROM mod_detail;
+SELECT CONCAT('disk_tsar: ', COUNT(*), ' rows') FROM disk_tsar;
+SELECT CONCAT('pref_tsar: ', COUNT(*), ' rows') FROM pref_tsar;

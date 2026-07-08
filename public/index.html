@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Server Monitor</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { darkMode: 'class', theme: { extend: {} } }
+</script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #09090b; color: #e4e4e7; }
+.card { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 20px; }
+.kpi-card { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 20px; text-align: center; }
+.kpi-value { font-size: 32px; font-weight: 700; color: #f4f4f5; line-height: 1; }
+.kpi-label { font-size: 13px; color: #a1a1aa; margin-top: 6px; }
+.chart-box { width: 100%; height: 500px; }
+select { background: #27272a; color: #e4e4e7; border: 1px solid #3f3f46; border-radius: 8px; padding: 6px 12px; font-size: 14px; outline: none; cursor: pointer; }
+select:focus { border-color: #3b82f6; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 10px; color: #a1a1aa; font-weight: 500; border-bottom: 1px solid #27272a; position: sticky; top: 0; background: #18181b; }
+td { padding: 7px 10px; border-bottom: 1px solid #1f1f23; }
+tr { cursor:pointer; } tr:hover td { background: #1f1f23; } tr.active td { background: #1e1e2e; border-color: #3b82f6; }
+.detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.detail-item { display:flex; align-items:center; gap:8px; font-size:13px; }
+.detail-label { color:#71717a; min-width:60px; }
+.detail-value { color:#e4e4e7; font-weight:500; }
+.tab-bar { display: flex; gap: 4px; background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 4px; margin-bottom: 16px; }
+.tab-btn { padding: 8px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; color: #a1a1aa; cursor: pointer; border: none; background: transparent; transition: all .15s; }
+.tab-btn:hover { color: #e4e4e7; background: #27272a; }
+.tab-btn.active { color: #f4f4f5; background: #3b82f6; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.tag-group { display:flex; flex-wrap:wrap; gap:6px; }
+.tag { display:inline-block; padding:3px 12px; border-radius:999px; font-size:12px; cursor:pointer; border:1px solid #3f3f46; color:#a1a1aa; background:transparent; transition:all .15s; user-select:none; }
+.tag:hover { border-color:#52525b; color:#e4e4e7; }
+.tag.active { background:#3b82f6; border-color:#3b82f6; color:#fff; }
+.tag.inactive { opacity:0.4; }
+.card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.range-group { display:flex; gap:3px; background:#1f1f23; border-radius:6px; padding:2px; }
+.range-btn { padding:4px 12px; border-radius:4px; font-size:11px; color:#71717a; cursor:pointer; border:none; background:transparent; transition:all .12s; font-family:inherit; }
+.range-btn:hover { color:#e4e4e7; }
+.range-btn.active { background:#3b82f6; color:#fff; }
+</style>
+</head>
+<body class="dark">
+
+<div style="max-width: 1200px; margin: 0 auto; padding: 24px 32px;">
+
+  <!-- Header -->
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+    <div>
+      <h1 style="font-size:20px; font-weight:600; color:#f4f4f5;">Server Monitor</h1>
+      <p style="font-size:13px; color:#71717a; margin-top:2px;">DataModelingPractice · 20 servers</p>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <label style="font-size:13px; color:#a1a1aa;">主机</label>
+      <select id="hostSelect" onchange="changeHost(this.value)"></select>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('overview', this)">总览</button>
+    <button class="tab-btn" onclick="switchTab('cpu', this)">CPU</button>
+    <button class="tab-btn" onclick="switchTab('mem-net', this)">内存/网络</button>
+    <button class="tab-btn" onclick="switchTab('disk', this)">磁盘</button>
+    <button class="tab-btn" onclick="switchTab('load-proc', this)">负载/进程</button>
+  </div>
+
+  <!-- Tab: 总览 -->
+  <div id="panel-overview" class="tab-panel active">
+    <!-- KPI Cards -->
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px;">
+      <div class="kpi-card"><div class="kpi-value" id="kpiHosts">0</div><div class="kpi-label">主机总数</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="kpiModels">0</div><div class="kpi-label">机型种类</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="kpiLocations">0</div><div class="kpi-label">机房数</div></div>
+      <div class="kpi-card"><div class="kpi-value" id="kpiOwners">0</div><div class="kpi-label">负责人数</div></div>
+    </div>
+
+    <!-- Two-column layout -->
+    <div style="display:grid; grid-template-columns:3fr 2fr; gap:12px;">
+      <!-- Left Column -->
+      <div>
+        <!-- Charts row: location ring + model pie -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div class="card" style="padding:12px;">
+            <div style="font-size:12px;color:#a1a1aa;margin-bottom:4px;text-align:center;">机房分布</div>
+            <div style="width:100%;height:220px;" id="locationChart"></div>
+          </div>
+          <div class="card" style="padding:12px;">
+            <div style="font-size:12px;color:#a1a1aa;margin-bottom:4px;text-align:center;">硬件型号分布</div>
+            <div style="width:100%;height:220px;" id="modelChart"></div>
+          </div>
+        </div>
+        <!-- Host Table -->
+        <div class="card" style="overflow:auto; max-height:340px;">
+          <table>
+            <thead><tr><th style="width:20px;">状态</th><th>ID</th><th>主机名</th><th>型号</th><th>位置</th><th>负责人</th></tr></thead>
+            <tbody id="hostTableBody"></tbody>
+          </table>
+        </div>
+        <!-- Host Detail -->
+        <div id="hostDetail" style="display:none; margin-top:12px;"></div>
+      </div>
+
+      <!-- Right Column -->
+      <div>
+        <!-- Health Gauge -->
+        <div class="card" style="padding:12px; margin-bottom:12px;">
+          <div style="font-size:12px;color:#a1a1aa;margin-bottom:4px;text-align:center;">健康评分</div>
+          <div style="width:100%;height:210px;" id="healthChart"></div>
+          <div id="healthReasons" style="margin-top:6px;padding:0 4px;"></div>
+        </div>
+        <!-- Alert List -->
+        <div class="card" style="padding:12px; max-height:360px; overflow:hidden; display:flex; flex-direction:column;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:12px;color:#a1a1aa;">告警简报</span>
+            <span id="alertCount" style="font-size:11px;color:#71717a;">0 条</span>
+          </div>
+          <div id="alertList" style="overflow-y:auto; flex:1; font-size:12px;">
+            <div style="color:#71717a;text-align:center;padding:20px 0;">暂无告警</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: CPU -->
+  <div id="panel-cpu" class="tab-panel">
+    <div class="card">
+      <div class="card-header">
+        <span style="font-size:13px;font-weight:500;color:#a1a1aa;">CPU 使用率 (%)</span>
+        <div class="range-group" id="cpuRange">
+          <button class="range-btn" data-range="1h" onclick="setRange('cpu','1h',this)">1h</button>
+          <button class="range-btn" data-range="6h" onclick="setRange('cpu','6h',this)">6h</button>
+          <button class="range-btn active" data-range="24h" onclick="setRange('cpu','24h',this)">24h</button>
+          <button class="range-btn" data-range="7d" onclick="setRange('cpu','7d',this)">7d</button>
+        </div>
+      </div>
+      <div class="chart-box" id="cpuChart"></div>
+    </div>
+  </div>
+
+  <!-- Tab: 内存/网络 -->
+  <div id="panel-mem-net" class="tab-panel">
+    <div class="card">
+      <div class="card-header">
+        <span style="font-size:13px;font-weight:500;color:#a1a1aa;">内存 / 网络</span>
+        <div class="range-group" id="memNetRange">
+          <button class="range-btn" data-range="1h" onclick="setRange('memNet','1h',this)">1h</button>
+          <button class="range-btn" data-range="6h" onclick="setRange('memNet','6h',this)">6h</button>
+          <button class="range-btn active" data-range="24h" onclick="setRange('memNet','24h',this)">24h</button>
+          <button class="range-btn" data-range="7d" onclick="setRange('memNet','7d',this)">7d</button>
+        </div>
+      </div>
+      <div class="chart-box" id="memNetChart"></div>
+    </div>
+  </div>
+
+  <!-- Tab: 磁盘 -->
+  <div id="panel-disk" class="tab-panel">
+    <div class="card">
+      <div class="card-header">
+        <span style="font-size:13px;font-weight:500;color:#a1a1aa;">磁盘</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <select id="diskSelect" onchange="changeDisk(this.value)">
+            <option value="sda">sda</option>
+            <option value="sdb">sdb</option>
+            <option value="sdc">sdc</option>
+            <option value="sdd">sdd</option>
+            <option value="sde">sde</option>
+          </select>
+          <div class="range-group" id="diskRange">
+            <button class="range-btn" data-range="1h" onclick="setRange('disk','1h',this)">1h</button>
+            <button class="range-btn" data-range="6h" onclick="setRange('disk','6h',this)">6h</button>
+            <button class="range-btn active" data-range="24h" onclick="setRange('disk','24h',this)">24h</button>
+            <button class="range-btn" data-range="7d" onclick="setRange('disk','7d',this)">7d</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-box" id="diskChart"></div>
+    </div>
+  </div>
+
+  <!-- Tab: 负载/进程 -->
+  <div id="panel-load-proc" class="tab-panel">
+    <div class="card">
+      <div class="card-header">
+        <span style="font-size:13px;font-weight:500;color:#a1a1aa;">负载 / 进程</span>
+        <div class="range-group" id="loadProcRange">
+          <button class="range-btn" data-range="1h" onclick="setRange('loadProc','1h',this)">1h</button>
+          <button class="range-btn" data-range="6h" onclick="setRange('loadProc','6h',this)">6h</button>
+          <button class="range-btn active" data-range="24h" onclick="setRange('loadProc','24h',this)">24h</button>
+          <button class="range-btn" data-range="7d" onclick="setRange('loadProc','7d',this)">7d</button>
+        </div>
+      </div>
+      <div class="chart-box" id="loadProcChart"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ===== Chart Configuration =====
+const CHART_CFG = {
+  cpu: {
+    el: 'cpuChart',
+    api: 'cpu',
+    rangeEl: 'cpuRange',
+    tagEl: 'cpuTags',
+    stack: 'cpu',
+    series: [
+      { key: 'cpu_user', name: 'cpu_user', color: '#4B7CFA', yIdx: 0, area: true },
+      { key: 'cpu_sys',  name: 'cpu_sys',  color: '#00E5FF', yIdx: 0, area: true },
+      { key: 'cpu_wait', name: 'cpu_wait', color: '#FF8C00', yIdx: 0, area: true },
+      { key: 'cpu_idle', name: 'cpu_idle', color: '#6b7280', yIdx: 0, deem: true },
+    ],
+    yAxis: [{ name: '%' }],
+    marks: [{ value: 80, label: '警戒线 80%', color: '#ef4444' }],
+  },
+  memNet: {
+    el: 'memNetChart',
+    api: 'mem-net',
+    rangeEl: 'memNetRange',
+    tagEl: 'memNetTags',
+    series: [
+      { key: 'mem_used', name: 'mem_used', color: '#4B7CFA', yIdx: 0, area: true },
+      { key: 'mem_free', name: 'mem_free', color: '#2ECC71', yIdx: 0, area: true },
+      { key: 'net_in',   name: 'net_in',   color: '#FF8C00', yIdx: 1 },
+      { key: 'net_out',  name: 'net_out',  color: '#FF4757', yIdx: 1 },
+    ],
+    yAxis: [
+      { name: 'MB', color: '#4B7CFA' },
+      { name: 'MB/s', color: '#FF8C00' },
+    ],
+    marks: [{ value: 80, label: 'mem_used警戒', color: '#ef4444' }],
+  },
+  disk: {
+    el: 'diskChart',
+    api: 'disk',
+    rangeEl: 'diskRange',
+    tagEl: 'diskTags',
+    series: [
+      { key: 'util',  name: 'util (%)',  color: '#FF4757', yIdx: 0, area: true },
+      { key: 'await', name: 'await (ms)', color: '#FFA502', yIdx: 0, area: true },
+      { key: 'read',  name: 'read',       color: '#4B7CFA', yIdx: 0 },
+      { key: 'write', name: 'write',      color: '#2ECC71', yIdx: 0 },
+    ],
+    yAxis: [{ name: '' }],
+    marks: [{ value: 90, label: '警戒线 90%', color: '#ef4444' }],
+  },
+  loadProc: {
+    el: 'loadProcChart',
+    api: 'load-proc',
+    rangeEl: 'loadProcRange',
+    tagEl: 'loadProcTags',
+    series: [
+      { key: 'load1',      name: 'load1',      color: '#4B7CFA', yIdx: 0, area: true },
+      { key: 'load5',      name: 'load5',      color: '#2ECC71', yIdx: 0 },
+      { key: 'load15',     name: 'load15',     color: '#FFA502', yIdx: 0 },
+      { key: 'proc_run',   name: 'proc_run',   color: '#A855F7', yIdx: 1 },
+      { key: 'proc_block', name: 'proc_block', color: '#FF4757', yIdx: 1 },
+      { key: 'proc_total', name: 'proc_total', color: '#22D3EE', yIdx: 1 },
+    ],
+    yAxis: [
+      { name: '负载', color: '#4B7CFA' },
+      { name: '进程', color: '#A855F7' },
+    ],
+    marks: [],
+  },
+};
+
+const chartInstances = {};
+let hostData = [];
+let currentHost = 'host001';
+let currentDisk = 'sda';
+let currentRange = { cpu: '24h', memNet: '24h', disk: '24h', loadProc: '24h' };
+
+function timeFormatter(ts, full) {
+  const d = new Date(ts);
+  if (full) return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// ----- Render chart -----
+function formatXLabel(raw) {
+  // "2026-07-01 00:00:00" → "07/01 00:00" or just "00:00"
+  const d = new Date(raw.replace(' ', 'T'));
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function syncChart(name) {
+  const cfg = CHART_CFG[name];
+  if (!cfg) return;
+  const chart = chartInstances[cfg.el];
+  if (!chart) return;
+
+  // Show all non-deem series by default
+  const lineSeries = cfg.series.filter(s => !s.deem);
+
+  // Build yAxis
+  const yAxis = cfg.yAxis.map((y, i) => ({
+    type: 'value',
+    name: y.name,
+    nameTextStyle: { color: y.color || '#71717a', fontSize: 10, fontWeight: 'bold' },
+    axisLabel: { color: y.color || '#71717a', fontSize: 11 },
+    splitLine: { lineStyle: { color: '#1f1f23', type: 'dashed' } },
+    axisLine: { lineStyle: { color: y.color || '#3f3f46' } },
+  }));
+  yAxis.forEach((y, i) => { if (i > 0) y.splitLine.show = false; });
+
+  // Build series
+  const series = lineSeries.map(s => {
+    const item = {
+      name: s.name,
+      type: 'line',
+      data: s.fullData || [],
+      smooth: true,
+      symbol: 'none',
+      lineStyle: { width: 2, color: s.color },
+      itemStyle: { color: s.color },
+    };
+    if (cfg.stack && !s.deem) item.stack = cfg.stack;
+    if (s.yIdx > 0) item.yAxisIndex = s.yIdx;
+    if (s.area) {
+      item.areaStyle = {
+        opacity: 0.08,
+        color: s.color,
+      };
+    }
+    return item;
+  });
+
+  // Build markLines for first series
+  cfg.marks.forEach(m => {
+    if (lineSeries.length) {
+      series[0].markLine = series[0].markLine || {
+        silent: true,
+        symbol: 'none',
+        lineStyle: { color: m.color, type: 'dashed', width: 1.5 },
+        label: { color: m.color, fontSize: 10, position: 'start', formatter: m.label },
+        data: [{ yAxis: m.value }],
+      };
+    }
+  });
+
+  // Tooltip: include all series (even deem) when hovering
+  const allSeriesForTooltip = cfg.series.filter(s => (s.fullData || []).length || !s.deem);
+
+  const opt = {
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#18181b',
+      borderColor: '#3f3f46',
+      borderWidth: 1,
+      textStyle: { color: '#e4e4e7', fontSize: 12 },
+      axisPointer: {
+        type: 'cross',
+        crossStyle: { color: '#52525b' },
+        label: { backgroundColor: '#27272a', color: '#e4e4e7' },
+      },
+      formatter: function(params) {
+        if (!params || !params.length) return '';
+        let html = `<div style="font-size:11px;color:#71717a;margin-bottom:4px;">${params[0].axisValue}</div>`;
+        params.forEach(p => {
+          html += `<div style="display:flex;align-items:center;gap:6px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:${p.color};display:inline-block;"></span>
+            <span style="color:#a1a1aa;">${p.seriesName}:</span>
+            <span style="color:#f4f4f5;font-weight:500;">${p.value}</span>
+          </div>`;
+        });
+        return html;
+      },
+    },
+    legend: { show: false },  // hide bottom legend, use top tags only
+    grid: { left: 55, right: 24, top: 8, bottom: 16 },
+    xAxis: {
+      type: 'category',
+      data: cfg.series[0] && cfg.series[0].fullData ? cfg.series[0]._times || [] : [],
+      boundaryGap: false,
+      axisLine: { lineStyle: { color: '#3f3f46' } },
+      axisLabel: {
+        color: '#71717a', fontSize: 10,
+        formatter: formatXLabel,
+      },
+      splitLine: { show: false },
+    },
+    yAxis,
+    series,
+    animationDuration: 300,
+  };
+
+  chart.setOption(opt, true);
+}
+
+// ----- Data Loading with range -----
+async function loadChartData(name) {
+  const cfg = CHART_CFG[name];
+  if (!cfg) return;
+  const range = currentRange[name];
+  let url = `/api/${cfg.api}?hostid=${currentHost}&range=${range}`;
+  if (cfg.api === 'disk') url += `&disk=${currentDisk}`;
+  const res = await fetch(url);
+  const raw = await res.json();
+
+  if (!raw.length) {
+    const chart = chartInstances[cfg.el];
+    if (chart) chart.clear();
+    return;
+  }
+
+  // Organize data by series key
+  const times = [...new Set(raw.map(d => d.time))];
+  cfg.series.forEach(s => {
+    s.fullData = raw.filter(d => {
+      const expectedKey = cfg.api === 'disk' ? `${currentDisk}_${s.key}` : s.key;
+      return d.mod_name === expectedKey;
+    }).map(d => d.value);
+    s._times = times;
+  });
+
+  syncChart(name);
+}
+
+// ----- Range selector -----
+function setRange(name, range, btn) {
+  if (currentRange[name] === range) return;
+  currentRange[name] = range;
+  const group = document.getElementById(CHART_CFG[name].rangeEl);
+  group.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadChartData(name);
+}
+
+// ----- Initialize Charts -----
+Object.values(CHART_CFG).forEach(cfg => {
+  const el = document.getElementById(cfg.el);
+  if (el) chartInstances[cfg.el] = echarts.init(el, 'dark');
+});
+
+// ----- Host / Disk loading -----
+async function loadHosts() {
+  const [hostRes, statusRes] = await Promise.all([
+    fetch('/api/hosts'),
+    fetch('/api/host-status'),
+  ]);
+  hostData = await hostRes.json();
+  const statusData = await statusRes.json();
+  const statusMap = {};
+  statusData.forEach(s => { statusMap[s.hostid] = s; });
+
+  const sel = document.getElementById('hostSelect');
+  const tbody = document.getElementById('hostTableBody');
+  const models = {}, locs = {}, owners = {};
+  sel.innerHTML = '';
+  tbody.innerHTML = '';
+  const dotColor = { healthy: '#10b981', warning: '#f59e0b', critical: '#ef4444' };
+
+  hostData.forEach(h => {
+    const st = statusMap[h.hostid] || { status: 'healthy', issues: [] };
+    const color = dotColor[st.status] || '#71717a';
+    const title = st.issues.length ? st.issues.map(i => i.msg).join('; ') : '正常';
+    sel.innerHTML += `<option value="${h.hostid}">${h.hostid} - ${h.hostname}</option>`;
+    tbody.innerHTML += `<tr onclick="selectHost('${h.hostid}',this)">
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};" title="${title}"></span></td>
+      <td style="color:#818cf8;font-weight:500;">${h.hostid}</td>
+      <td style="font-size:12px;color:#a1a1aa;">${h.hostname}</td>
+      <td>${h.model}</td><td>${h.location1}</td><td>${h.owner}</td>
+    </tr>`;
+    models[h.model] = (models[h.model] || 0) + 1;
+    locs[h.location1] = (locs[h.location1] || 0) + 1;
+    owners[h.owner] = (owners[h.owner] || 0) + 1;
+  });
+  document.getElementById('kpiHosts').textContent = hostData.length;
+  document.getElementById('kpiModels').textContent = Object.keys(models).length;
+  document.getElementById('kpiLocations').textContent = Object.keys(locs).length;
+  document.getElementById('kpiOwners').textContent = Object.keys(owners).length;
+}
+
+async function loadAllCharts() {
+  await Promise.all([
+    loadChartData('cpu'),
+    loadChartData('memNet'),
+    loadChartData('disk'),
+    loadChartData('loadProc'),
+  ]);
+}
+
+// ----- Tab -----
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+  const elMap = {
+    cpu: 'cpuChart',
+    'mem-net': 'memNetChart',
+    disk: 'diskChart',
+    'load-proc': 'loadProcChart',
+  };
+  const chart = chartInstances[elMap[name]];
+  if (chart) setTimeout(() => chart.resize(), 50);
+}
+
+function changeHost(hostid) {
+  currentHost = hostid;
+  document.getElementById('hostSelect').value = hostid;
+  document.querySelectorAll('#hostTableBody tr').forEach(r => r.classList.remove('active'));
+  document.getElementById('hostDetail').style.display = 'none';
+  loadAllCharts();
+}
+
+async function selectHost(hostid, el) {
+  document.getElementById('hostSelect').value = hostid;
+  document.querySelectorAll('#hostTableBody tr').forEach(r => r.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('hostDetail').style.display = 'none';
+  const res = await fetch(`/api/host-summary?hostid=${hostid}`);
+  if (!res.ok) return;
+  const h = await res.json();
+  document.getElementById('hostDetail').innerHTML = `
+    <div class="card" style="border-color:#3b82f6;border-width:1px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <span style="font-size:15px;font-weight:600;color:#f4f4f5;">${h.hostid} — ${h.hostname}</span>
+        <span onclick="document.getElementById('hostDetail').style.display='none';document.querySelectorAll('#hostTableBody tr').forEach(r=>r.classList.remove('active'))" style="cursor:pointer;color:#71717a;font-size:18px;">✕</span>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-item"><span class="detail-label">型号</span><span class="detail-value">${h.model}</span></div>
+        <div class="detail-item"><span class="detail-label">位置</span><span class="detail-value">${h.location1} / ${h.location2}</span></div>
+        <div class="detail-item"><span class="detail-label">负责人</span><span class="detail-value">${h.owner}</span></div>
+        <div class="detail-item"><span class="detail-label">磁盘记录</span><span class="detail-value">${h.diskCount} 条</span></div>
+        <div class="detail-item"><span class="detail-label">性能记录</span><span class="detail-value">${h.prefCount} 条</span></div>
+        <div class="detail-item"><span class="detail-label">域名</span><span class="detail-value" style="font-size:12px;color:#a1a1aa;">hismartlab.cn</span></div>
+      </div>
+    </div>`;
+  document.getElementById('hostDetail').style.display = 'block';
+  currentHost = hostid;
+  loadAllCharts();
+}
+
+function changeDisk(disk) {
+  currentDisk = disk;
+  loadChartData('disk');
+}
+
+// ===== Overview Charts =====
+const locationChart = echarts.init(document.getElementById('locationChart'), 'dark');
+const modelChart = echarts.init(document.getElementById('modelChart'), 'dark');
+const healthChart = echarts.init(document.getElementById('healthChart'), 'dark');
+
+function initOverview() {
+  // Location ring chart — simplified labels (hover only)
+  fetch('/api/distribution?type=location')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.length) return;
+      const colors = ['#3b82f6','#10b981','#f59e0b','#a78bfa','#22d3ee','#ef4444'];
+      data.forEach((d,i) => d.itemStyle = { color: colors[i % colors.length] });
+      locationChart.setOption({
+        tooltip: { trigger: 'item', backgroundColor: '#1f1f23', borderColor: '#3f3f46', textStyle: { color: '#e4e4e7', fontSize: 12 } },
+        series: [{
+          type: 'pie', radius: ['40%', '65%'], avoidLabelOverlap: true,
+          label: { show: false },
+          emphasis: { label: { show: true, fontSize: 13, fontWeight: 'bold' }, scale: true },
+          data,
+        }],
+      });
+    });
+
+  // Model pie chart — simplified labels
+  fetch('/api/distribution?type=model')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.length) return;
+      const colors = ['#3b82f6','#10b981','#f59e0b','#a78bfa','#22d3ee'];
+      data.forEach((d,i) => d.itemStyle = { color: colors[i % colors.length] });
+      modelChart.setOption({
+        tooltip: { trigger: 'item', backgroundColor: '#1f1f23', borderColor: '#3f3f46', textStyle: { color: '#e4e4e7', fontSize: 12 } },
+        series: [{
+          type: 'pie', radius: ['0%', '70%'], avoidLabelOverlap: true,
+          label: { show: false },
+          emphasis: { label: { show: true, fontSize: 13, fontWeight: 'bold' }, scale: true },
+          data,
+        }],
+      });
+    });
+
+  // Health gauge
+  fetch('/api/health-score')
+    .then(r => r.json())
+    .then(d => {
+      const color = d.score >= 80 ? '#10b981' : d.score >= 60 ? '#f59e0b' : '#ef4444';
+      healthChart.setOption({
+        series: [{
+          type: 'gauge', center: ['50%', '55%'], radius: '85%',
+          startAngle: 220, endAngle: -40,
+          min: 0, max: 100,
+          axisLine: {
+            lineStyle: {
+              width: 18,
+              color: [
+                [0.4, '#ef4444'],
+                [0.7, '#f59e0b'],
+                [1, '#10b981'],
+              ],
+            },
+          },
+          pointer: { length: '60%', width: 4, itemStyle: { color } },
+          axisTick: { distance: -14, length: 4, lineStyle: { color: '#3f3f46', width: 1 } },
+          splitLine: { distance: -16, length: 10, lineStyle: { color: '#52525b', width: 2 } },
+          axisLabel: { color: '#71717a', fontSize: 9, distance: -24 },
+          detail: { valueAnimation: true, formatter: '{value}', color, fontSize: 32, fontWeight: 700, offsetCenter: [0, '40%'] },
+          title: { offsetCenter: [0, '70%'], fontSize: 11, color: '#a1a1aa' },
+          data: [{ value: Math.round(d.score), name: '健康评分' }],
+        }],
+      });
+
+      const el = document.getElementById('healthReasons');
+      if (d.reasons && d.reasons.length) {
+        el.innerHTML = d.reasons.map(r =>
+          `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;border-bottom:1px solid #1f1f23;">
+            <span style="color:#ef4444;flex-shrink:0;">−${r.deduct}</span>
+            <span style="color:#a1a1aa;">${r.desc}</span>
+          </div>`
+        ).join('');
+      } else {
+        el.innerHTML = '<div style="color:#10b981;font-size:11px;text-align:center;">所有指标正常</div>';
+      }
+    });
+
+  // Alerts
+  fetch('/api/alerts')
+    .then(r => r.json())
+    .then(data => {
+      const el = document.getElementById('alertList');
+      const cnt = document.getElementById('alertCount');
+      if (!data.length) {
+        el.innerHTML = '<div style="color:#71717a;text-align:center;padding:20px 0;">暂无告警</div>';
+        cnt.textContent = '0 条';
+        return;
+      }
+      cnt.textContent = `${data.length} 条`;
+      el.innerHTML = data.map(a => {
+        const dot = a.severity === 'critical' ? '#ef4444' : '#f59e0b';
+        const sevLabel = a.severity === 'critical' ? '严重' : '警告';
+        return `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #1f1f23;">
+          <span style="width:6px;height:6px;border-radius:50%;background:${dot};flex-shrink:0;"></span>
+          <span style="color:#71717a;flex-shrink:0;font-size:11px;">${a.time.slice(11,19)}</span>
+          <span style="color:#818cf8;flex-shrink:0;font-size:11px;">${a.hostid}</span>
+          <span style="font-size:10px;padding:1px 5px;border-radius:3px;background:${dot}22;color:${dot};flex-shrink:0;">${sevLabel}</span>
+          <span style="color:#e4e4e7;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.msg}</span>
+        </div>`;
+      }).join('');
+    });
+}
+
+// ===== Resize =====
+const overviewCharts = [locationChart, modelChart, healthChart];
+window.addEventListener('resize', () => {
+  Object.values(chartInstances).forEach(c => c && c.resize());
+  overviewCharts.forEach(c => c && c.resize());
+});
+
+// ===== Init =====
+loadHosts().then(() => { changeHost('host001'); initOverview(); });
+</script>
+</body>
+</html>
