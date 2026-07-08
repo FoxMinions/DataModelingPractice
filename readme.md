@@ -155,3 +155,18 @@ ts              hostid   type   mod         value    tag
 1782835200000   host001  pref   net_in      156.32   net_speed_mb
 ...
 ```
+
+---
+
+## 五、Web 监控面板
+
+启动：`node server.js` → 访问 `http://localhost:3000`
+
+### 总览页
+![总览页](screenshot-overview.png)
+
+### CPU 监控
+![CPU 监控](screenshot-cpu.png)
+
+### 内存/网络监控
+![内存/网络监控](screenshot-memnet.png)
