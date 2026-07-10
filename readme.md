@@ -1,172 +1,197 @@
-# 数据说明文档
+<div align="center">
 
-## 一、数据概览
+# 🖥️ Server Monitor — 数据建模实战
 
-| 文件名 | 表名 | 记录数 | 说明 |
-|--------|------|--------|------|
-| [host_detail.dat](./host_detail.dat) | host_detail | 20 | 主机信息明细表（20台服务器） |
-| [mod_detail.dat](./mod_detail.dat) | mod_detail | 55 | 指标MOD字典表（35个磁盘指标 + 20个性能指标） |
-| [disk_tsar.dat](./disk_tsar.dat) | tsar_detail (type=disk) | 12,000 | 磁盘监控采集明细（≥1万条） |
-| [pref_tsar.dat](./pref_tsar.dat) | tsar_detail (type=pref) | 67,200 | 性能监控采集明细（20台主机 × 7天 × 24小时 × 20个指标） |
+**Express + ECharts 驱动的服务器监控面板 · 5000+ 行采集数据 · 时序可视化**
 
-> 数据时间范围：`2026-07-01 00:00:00` 起（磁盘每5分钟一次采样，性能每小时一次采样）  
-> 主机域名后缀：`hismartlab.cn`  
-> 分隔符：制表符 `\t`（Tab）
+<p>
 
----
+[![Node](https://img.shields.io/badge/Node.js-18%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![Express](https://img.shields.io/badge/Express-4.21-000000?logo=express&logoColor=white)](https://expressjs.com)
+[![ECharts](https://img.shields.io/badge/ECharts-5-AA344D?logo=apacheecharts&logoColor=white)](https://echarts.apache.org)
+[![Tailwind](https://img.shields.io/badge/TailwindCSS-v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+![Data Rows](https://img.shields.io/badge/data-79k+%20rows-3b82f6)
 
-## 二、表结构说明
-
-### 1. host_detail — 主机信息明细表
-
-| 字段 | 类型 | 含义 | 示例 |
-|------|------|------|------|
-| hostid | string | 主机ID（主键） | host001 |
-| hostname | string | 主机FQDN名 | server-001.hismartlab.cn |
-| owner | string | 负责人 | 张三 / 李四 / 王五 / ... |
-| model | string | 硬件型号 | Dell R740 / HP DL388 / Lenovo SR650 / Huawei 2288H / ... |
-| location1 | string | 机房位置 | A机房 / B机房 / C机房 / D机房 / E机房 |
-| location2 | string | 机柜编号 | 机柜01 ~ 机柜12 |
-
-### 2. mod_detail — 指标（MOD）字典表
-
-| 字段 | 类型 | 含义 | 示例 |
-|------|------|------|------|
-| mod | string | 指标代码（主键，关联 tsar_detail.mod） | sda_util / cpu_usage |
-| type | string | 资源类型 | disk / pref |
-| desc | string | 指标中文说明 | 磁盘A使用率 / 用户态CPU使用率 |
-| unit | string | 单位 | % / MB / MB/s / ms / req/s / sectors/s / pkt/s / 个 |
-| tag | string | 指标分类标签 | disk_util_percent / cpu_percent / ... |
-
-#### 磁盘类指标（type=disk，共35个）
-
-按磁盘 sda / sdb / sdc / sdd / sde × 7种指标组合：
-
-| 指标后缀 | 说明 | 单位 | 分类tag |
-|----------|------|------|---------|
-| `_rqm` | 每秒合并读请求数 | req/s | disk_rqm_per_sec |
-| `_read` | 每秒读取扇区数 | sectors/s | disk_rw_sectors |
-| `_write` | 每秒写入扇区数 | sectors/s | disk_rw_sectors |
-| `_avgrq` | 平均请求扇区大小 | sectors | disk_other_metric |
-| `_await` | 平均I/O等待时间 | ms | disk_latency_ms |
-| `_util` | 磁盘使用率 | % | disk_util_percent |
-| `_svctm` | 平均服务时间 | ms | disk_latency_ms |
-
-#### 性能类指标（type=pref，共20个）
-
-| 分类 | mod | 说明 | 单位 | tag |
-|------|-----|------|------|-----|
-| CPU | cpu_user | 用户态CPU使用率 | % | cpu_percent |
-| CPU | cpu_sys | 系统态CPU使用率 | % | cpu_percent |
-| CPU | cpu_wait | IO等待CPU使用率 | % | cpu_percent |
-| CPU | cpu_idle | CPU空闲率 | % | cpu_percent |
-| CPU | cpu_usage | CPU综合使用率 | % | cpu_percent |
-| 内存 | mem_used | 已使用内存 | MB | mem_metric |
-| 内存 | mem_free | 空闲内存 | MB | mem_metric |
-| 内存 | mem_buff | 缓冲区内存 | MB | mem_metric |
-| 内存 | mem_cache | 缓存内存 | MB | mem_metric |
-| 内存 | mem_swap | 交换区使用 | MB | mem_metric |
-| 网络 | net_in | 网络入站带宽 | MB/s | net_speed_mb |
-| 网络 | net_out | 网络出站带宽 | MB/s | net_speed_mb |
-| 网络 | net_pktin | 每秒入站数据包数 | pkt/s | net_packets |
-| 网络 | net_pktout | 每秒出站数据包数 | pkt/s | net_packets |
-| 负载 | load1 | 1分钟平均负载 |  | load_average |
-| 负载 | load5 | 5分钟平均负载 |  | load_average |
-| 负载 | load15 | 15分钟平均负载 |  | load_average |
-| 进程 | proc_run | 运行中进程数 | 个 | proc_count |
-| 进程 | proc_block | 阻塞进程数 | 个 | proc_count |
-| 进程 | proc_total | 总进程数 | 个 | proc_count |
-
-### 3. disk_tsar.dat / pref_tsar.dat — 采集明细表（tsar_detail）
-
-两个文件结构相同，通过 `type` 字段区分磁盘(disk)或性能(pref)：
-
-| 字段 | 类型 | 含义 | 关联 |
-|------|------|------|------|
-| ts | long | 采集时间戳（毫秒） | — |
-| hostid | string | 主机ID | → host_detail.hostid |
-| type | string | 资源类型 | disk / pref |
-| mod | string | 指标代码 | → mod_detail.mod |
-| value | string | 采集值（数值字符串） | mod_detail.unit 为单位 |
-| tag | string | 指标分类标签 | → mod_detail.tag |
+</p>
 
 ---
 
-## 三、ER 关系
+</div>
 
-```
-host_detail (1) ──── hostid ──── (N) tsar_detail (disk_tsar + pref_tsar)
-                                              │
-                                              │ mod
-                                              ▼
-                                     mod_detail (1)
-```
+## ✨ 亮点速览
 
-- **host_detail 1 : N tsar_detail**：一台主机产生多条采集记录
-- **mod_detail 1 : N tsar_detail**：一个指标（mod）出现在多条采集记录中
-- **tsar_detail = disk_tsar.dat ∪ pref_tsar.dat**：两个文件同结构，仅 type 值不同
+| | 特性 | 说明 |
+|--|------|------|
+| 🎯 | **数据建模** | 3 张关联表 · 20 台主机 · 55 个监控指标 |
+| 📊 | **时序可视化** | ECharts 折线图 · 多维度钻取 · 时间范围切换 |
+| 🩺 | **智能健康评估** | 综合评分算法 · 分级告警 · 扣分原因追溯 |
+| ⚡ | **零依赖数据库** | 纯文件存储 · `node server.js` 一键启动 |
 
----
+## 🚀 快速开始
 
-## 四、数据样例
-
-### host_detail.dat 样例
-
-```
-hostid  hostname                    owner   model        location1  location2
-host001 server-001.hismartlab.cn    陈三    Dell R750    A机房      机柜12
-host002 server-002.hismartlab.cn    钱七    HP DL388     B机房      机柜03
-host003 server-003.hismartlab.cn    林四    Dell R750    E机房      机柜02
-...
+```bash
+node server.js
+# → http://localhost:3000
 ```
 
-### mod_detail.dat 样例
+> 数据已内置（`host_detail.dat` / `mod_detail.dat` / `disk_tsar.dat` / `pref_tsar.dat`），开箱即用。
+
+## 🎨 监控面板
+
+<div align="center">
+
+| 总览页 | CPU 监控 | 内存 / 网络 |
+|:------:|:--------:|:----------:|
+| ![总览](screenshot-overview.png) | ![CPU](screenshot-cpu.png) | ![MemNet](screenshot-memnet.png) |
+
+</div>
+
+### 面板功能
+
+- **总览** — 主机分布 · 硬件型号 · 健康评分 · 告警简报 · 主机明细
+- **CPU** — `cpu_user` / `cpu_sys` / `cpu_wait` / `cpu_idle` 堆叠面积图
+- **内存/网络** — 双纵轴：内存用量(MB) + 网络带宽(MB/s)
+- **磁盘** — 按 `sda`~`sde` 切换 · util / await / read / write
+- **负载/进程** — 双纵轴：系统负载 + 进程统计
+- **时间范围** — 1h / 6h / 24h / 7d 一键切换
+- **健康评分** — 多维度加权算法 · 实时扣分原因
+
+## 🧱 数据模型
 
 ```
-mod          type   desc                      unit         tag
-sda_util     disk   磁盘A使用率                %            disk_util_percent
-sda_await    disk   磁盘A平均I/O等待时间       ms           disk_latency_ms
-cpu_user     pref   用户态CPU使用率            %            cpu_percent
-mem_used     pref   已使用内存                 MB           mem_metric
-net_in       pref   网络入站带宽               MB/s         net_speed_mb
-load1        pref   1分钟平均负载                            load_average
-proc_total   pref   总进程数                   个           proc_count
-...
+┌─────────────┐     hostid     ┌──────────────────┐
+│ host_detail │◄───────────────│   tsar_detail     │
+│  (20 台)    │   1 ──── N     │ (disk + pref)     │
+└─────────────┘                │  ~79,200 条       │
+                               └────────┬─────────┘
+                                        │ mod
+                                        ▼
+                               ┌──────────────────┐
+                               │   mod_detail      │
+                               │  (55 个指标)      │
+                               └──────────────────┘
 ```
 
-### disk_tsar.dat 样例
+### 数据一览
+
+| 文件 | 记录数 | 采集频率 | 时间范围 |
+|------|--------|----------|----------|
+| `host_detail.dat` | 20 | — | — |
+| `mod_detail.dat` | 55 | — | — |
+| `disk_tsar.dat` | 12,000 | 每 5 分钟 | 2026-07-01 起 |
+| `pref_tsar.dat` | 67,200 | 每小时 | 2026-07-01 起 |
+
+<details>
+<summary><b>📖 详细表结构</b>（点击展开）</summary>
+
+### host_detail
+
+| 字段 | 类型 | 含义 |
+|------|------|------|
+| hostid | string | 主机 ID（PK） |
+| hostname | string | FQDN · `*.hismartlab.cn` |
+| owner | string | 负责人 |
+| model | string | 硬件型号 |
+| location1 | string | 机房（A~E） |
+| location2 | string | 机柜（01~12） |
+
+### mod_detail
+
+| 字段 | 类型 | 含义 |
+|------|------|------|
+| mod | string | 指标代码（PK） |
+| type | string | `disk` / `pref` |
+| desc | string | 中文说明 |
+| unit | string | 单位 |
+| tag | string | 分类标签 |
+
+**磁盘指标** — sda~sde × 7 = 35 个
+
+| 后缀 | 说明 | 单位 |
+|------|------|------|
+| `_rqm` | 合并读请求 | req/s |
+| `_read` | 读取扇区数 | sectors/s |
+| `_write` | 写入扇区数 | sectors/s |
+| `_avgrq` | 平均请求扇区 | sectors |
+| `_await` | 平均 I/O 等待 | ms |
+| `_util` | 磁盘使用率 | % |
+| `_svctm` | 平均服务时间 | ms |
+
+**性能指标** — 5 类 20 个
+
+| 分类 | 数量 | 指标示例 |
+|------|------|----------|
+| CPU | 5 | `cpu_user` · `cpu_sys` · `cpu_usage` |
+| 内存 | 5 | `mem_used` · `mem_free` · `mem_swap` |
+| 网络 | 4 | `net_in` · `net_out` · `net_pktin` |
+| 负载 | 3 | `load1` · `load5` · `load15` |
+| 进程 | 3 | `proc_run` · `proc_block` · `proc_total` |
+
+### tsar_detail
+
+| 字段 | 类型 | 含义 |
+|------|------|------|
+| ts | long | 时间戳（ms） |
+| hostid | string | → `host_detail` |
+| type | string | `disk` / `pref` |
+| mod | string | → `mod_detail` |
+| value | string | 采集值 |
+| tag | string | → `mod_detail.tag` |
+
+</details>
+
+## 🏗 架构设计
 
 ```
-ts              hostid   type   mod         value    tag
-1782835200000   host003  disk   sda_write   280043   disk_rw_sectors
-1782835500000   host008  disk   sda_write   242357   disk_rw_sectors
-1782835800000   host013  disk   sdc_avgrq   989.52   disk_other_metric
-1782840300000   host015  disk   sdd_svctm   12.65    disk_latency_ms
-...
+dat/                        public/
+  host_detail.dat  ──────────┐
+  mod_detail.dat   ──────────┤
+  disk_tsar.dat    ──────────┤     ┌──────────────┐
+  pref_tsar.dat    ──────────┼────►│  server.js    │
+                              │     │  (Express)    │
+server.js ────────────────────┘     └──────┬───────┘
+                                           │ REST API
+                                    ┌──────┴───────┐
+                                    │  index.html   │
+                                    │  ECharts +    │
+                                    │  TailwindCSS  │
+                                    └──────────────┘
 ```
 
-### pref_tsar.dat 样例
+## 🛠 技术栈
+
+| 层 | 技术 |
+|----|------|
+| **后端** | Node.js 18+ · Express 4.21 · ES Modules |
+| **前端** | ECharts 5 · TailwindCSS v4 · 原生 JS |
+| **数据** | Tab 分隔文件 `.dat` · 内存加载 |
+| **可视化** | 折线图 · 饼图 · 仪表盘 · 堆叠面积图 |
+
+## 🧪 告警规则
+
+| 指标 | 警告阈值 | 严重阈值 |
+|------|----------|----------|
+| CPU 使用率 | > 80% | > 90% |
+| CPU IO 等待 | > 30% | — |
+| 内存使用 | > 800 GB | > 950 GB |
+| 磁盘利用率 | > 85% | > 95% |
+| load1 | > 20 | > 30 |
+
+## 📁 项目结构
 
 ```
-ts              hostid   type   mod         value    tag
-1782835200000   host001  pref   cpu_user    21.70    cpu_percent
-1782835200000   host001  pref   cpu_sys     11.98    cpu_percent
-1782835200000   host001  pref   mem_used    65536    mem_metric
-1782835200000   host001  pref   net_in      156.32   net_speed_mb
-...
+├── server.js              # Express 服务器 + API
+├── package.json           # 项目配置
+├── public/
+│   └── index.html         # 监控面板（ECharts + Tailwind）
+├── host_detail.dat        # 主机信息（20 台）
+├── mod_detail.dat         # 指标字典（55 个）
+├── disk_tsar.dat          # 磁盘采集（12,000 条）
+├── pref_tsar.dat          # 性能采集（67,200 条）
+├── import.sql             # SQL 导入脚本
+├── generate_csv.js        # CSV 生成脚本
+├── screenshot-overview.png
+├── screenshot-cpu.png
+└── screenshot-memnet.png
 ```
-
----
-
-## 五、Web 监控面板
-
-启动：`node server.js` → 访问 `http://localhost:3000`
-
-### 总览页
-![总览页](screenshot-overview.png)
-
-### CPU 监控
-![CPU 监控](screenshot-cpu.png)
-
-### 内存/网络监控
-![内存/网络监控](screenshot-memnet.png)
