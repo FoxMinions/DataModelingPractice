@@ -1,21 +1,33 @@
 <div align="center">
 
-# 🖥️ Server Monitor — 数据建模实战
+<pre>
+██████╗ ██████╗ 
+██╔══██╗╚════██╗
+██║  ██║ █████╔╝
+██║  ██║ ███╔═╝ 
+██████╔╝██████╗ 
+╚═════╝ ╚═════╝ 
+</pre>
 
-**Express + ECharts 驱动的服务器监控面板 · 5000+ 行采集数据 · 时序可视化**
+<pre>
+  __  __  ____  _   _ _____ _______ ____  _____  
+ |  \/  |/ __ \| \ | |_   _|__   __/ __ \|  __ \ 
+ | \  / | |  | |  \| | | |    | | | |  | | |__) |
+ | |\/| | |  | | . ` | | |    | | | |  | |  _  / 
+ | |  | | |__| | |\  |_| |_   | | | |__| | | \ \ 
+ |_|  |_|\____/|_| \_|_____|  |_|  \____/|_|  \_\
+</pre>
 
-<p>
+<br>
 
 [![Node](https://img.shields.io/badge/Node.js-18%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![Express](https://img.shields.io/badge/Express-4.21-000000?logo=express&logoColor=white)](https://expressjs.com)
 [![ECharts](https://img.shields.io/badge/ECharts-5-AA344D?logo=apacheecharts&logoColor=white)](https://echarts.apache.org)
 [![Tailwind](https://img.shields.io/badge/TailwindCSS-v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-![Data Rows](https://img.shields.io/badge/data-79k+%20rows-3b82f6)
+![Data](https://img.shields.io/badge/data-79k+%20rows-3b82f6)
 
-</p>
-
----
+**Express + ECharts 驱动的服务器监控面板 · 数据建模实战 · 时序可视化**
 
 </div>
 
